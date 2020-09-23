@@ -12,6 +12,8 @@ import './styling/fonts/fonts.css'
 const Root = styled.div`
   padding: 1rem;
   font-family: 'OfficeCodeProWeb', monospace;
+  max-width: 1180px;
+  margin: auto;
 `;
 
 const BreadCrumbList = styled.ul`
@@ -20,13 +22,13 @@ const BreadCrumbList = styled.ul`
   margin: 0;
   display: flex;
   align-items: center;
-  min-height: 70px;
+  min-height: 80px;
 `;
 
 const BreadCrumb = styled.li`
   font-size: 0.85rem;
   font-weight: 600;
-  max-width: 200px;
+  max-width: 20%;
 `;
 
 const BreadCrumbLink = styled.button`
@@ -55,6 +57,32 @@ const BreadCrumbLink = styled.button`
     display: inline-block;
   }
 `;
+
+const LegendRoot = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const LegendItem = styled.div`
+  display: flex;
+  align-items: center;
+  margin: 4rem 0rem 0;
+`;
+
+const LegendBlock = styled.div`
+  width: 4em;
+  height: 2rem;
+  margin: 0 0.1rem;
+`;
+
+const LegendText = styled.div`
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  margin: 0 0.5rem;
+`;
+
+
 
 interface NaicsDatum {
   naics_id: number,
@@ -201,9 +229,10 @@ const App = () => {
         const city_1_total = (d.numberOfFirms[1].value / totals[d.numberOfFirms[1].city.name].numberOfFirms) * 100;
         const diff = Math.abs(city_0_total - city_1_total);
         const digits = city_0_total < 0.001 || city_1_total < 0.001 || diff < 0.001 ? 4 : 2;
+        const x = d.name.length > 20 ? d.name.substring(0, 20) + '...' : d.name;
         data.push({
           groupName: f.city.name,
-          x: d.name,
+          x,
           y: (f.value / totals[f.city.name].numberOfFirms) * 100,
           fill: f.city.id === 945 ? d.color : rgba(d.color, 0.4),
           tooltipContent: `
@@ -280,6 +309,20 @@ const App = () => {
         axisLabels={{left: '% of Total Firms'}}
         labelFont={"'OfficeCodeProWeb', monospace"}
       />
+      <LegendRoot>
+        <LegendItem>
+          <LegendText>
+            New York
+          </LegendText>
+          <LegendBlock style={{backgroundColor: '#666'}} />
+        </LegendItem>
+        <LegendItem>
+          <LegendBlock style={{backgroundColor: '#bbb'}} />
+          <LegendText>
+            Boston
+          </LegendText>
+        </LegendItem>
+      </LegendRoot>
     </Root>
   );
 }
