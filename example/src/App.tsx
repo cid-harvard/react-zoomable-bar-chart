@@ -10,7 +10,7 @@ import styled from 'styled-components';
 import './styling/fonts/fonts.css'
 import PanelSearch, {Datum as PanelDatum} from 'react-panel-search';
 
-const font = "'OfficeCodeProWeb', monospace;";
+const font = "OfficeCodeProWeb, monospace";
 
 const Root = styled.div`
   padding: 1rem;
@@ -409,7 +409,6 @@ const App = () => {
         vizType={VizType.ClusterBarChart}
         data={sortedData}
         axisLabels={{left: '% of Total Firms'}}
-        labelFont={font}
       />
       <LegendRoot>
         <LegendItem>

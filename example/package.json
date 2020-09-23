@@ -23,7 +23,7 @@
     "raw.macro": "^0.4.2",
     "react": "file:../node_modules/react",
     "react-dom": "file:../node_modules/react-dom",
-    "react-fast-charts": "^1.0.8",
+    "react-fast-charts": "^1.0.9",
     "react-panel-search": "^1.2.9",
     "react-scripts": "file:../node_modules/react-scripts",
     "react-zoomable-bar-chart": "file:..",
