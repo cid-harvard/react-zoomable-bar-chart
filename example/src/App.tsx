@@ -5,6 +5,56 @@ import DataViz, {
 } from 'react-fast-charts';
 import raw from 'raw.macro';
 import {rgba} from 'polished';
+import sortBy from 'lodash/sortBy';
+import styled from 'styled-components';
+import './styling/fonts/fonts.css'
+
+const Root = styled.div`
+  padding: 1rem;
+  font-family: 'OfficeCodeProWeb', monospace;
+`;
+
+const BreadCrumbList = styled.ul`
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  min-height: 70px;
+`;
+
+const BreadCrumb = styled.li`
+  font-size: 0.85rem;
+  font-weight: 600;
+  max-width: 200px;
+`;
+
+const BreadCrumbLink = styled.button`
+  border: none;
+  background-color: transparent;
+  padding: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: 'OfficeCodeProWeb', monospace;
+  color: rgb(78, 140, 141);
+  cursor: pointer;
+  text-align: left;
+  margin-right: 1rem;
+  display: flex;
+  align-items: center;
+
+  span {
+    text-decoration: underline;
+  }
+
+  &:after {
+    content: '→';
+    margin: 0 0.5rem;
+    font-size: 1rem;
+    text-decoration: none;
+    display: inline-block;
+  }
+`;
 
 interface NaicsDatum {
   naics_id: number,
@@ -88,21 +138,45 @@ naics_2017.forEach(d => {
   const cities = bos_nyc_extract.filter(c => c.naics_id === naics_id);
   const numberOfEmployees: MergedDatum['numberOfEmployees'] = [];
   const numberOfFirms: MergedDatum['numberOfFirms'] = [];
-  cities.forEach(c => {
-    if (c.level === 1 && c.year === targetYear) {
-      totals[c.name].numberOfEmployees += c.num_employ;
-      totals[c.name].numberOfFirms += c.num_company;
-    }
+  if (!cities || cities.length < 2) {
     numberOfEmployees.push({
-      city: {id: c.city_id, name: c.name},
-      value: c.num_employ,
-      year: c.year,
+      city: {id: 945, name: 'New York'},
+      value: 0,
+      year: targetYear,
     })
     numberOfFirms.push({
-      city: {id: c.city_id, name: c.name},
-      value: c.num_company,
-      year: c.year,
+      city: {id: 945, name: 'New York'},
+      value: 0,
+      year: targetYear,
     })
+    numberOfEmployees.push({
+      city: {id: 1022, name: 'Boston'},
+      value: 0,
+      year: targetYear,
+    })
+    numberOfFirms.push({
+      city: {id: 1022, name: 'Boston'},
+      value: 0,
+      year: targetYear,
+    })
+  }
+  cities.forEach(c => {
+    if (c.year === targetYear) {
+      if (c.level === 1) {
+        totals[c.name].numberOfEmployees += c.num_employ;
+        totals[c.name].numberOfFirms += c.num_company;
+      }
+      numberOfEmployees.push({
+        city: {id: c.city_id, name: c.name},
+        value: c.num_employ,
+        year: c.year,
+      })
+      numberOfFirms.push({
+        city: {id: c.city_id, name: c.name},
+        value: c.num_company,
+        year: c.year,
+      })
+    }
   });
   merged.push({
     naicsId: naics_id,
@@ -114,7 +188,7 @@ naics_2017.forEach(d => {
     numberOfEmployees,
     numberOfFirms,
   })
-})
+});
 
 const App = () => {
   const [focusedIndustryId, setFocusedIndustryId] = useState<number | null>(null);
@@ -123,16 +197,40 @@ const App = () => {
   filtered.forEach(d => {
     d.numberOfFirms.forEach(f => {
       if (f.year === targetYear) {
+        const city_0_total = (d.numberOfFirms[0].value / totals[d.numberOfFirms[0].city.name].numberOfFirms) * 100;
+        const city_1_total = (d.numberOfFirms[1].value / totals[d.numberOfFirms[1].city.name].numberOfFirms) * 100;
+        const diff = Math.abs(city_0_total - city_1_total);
+        const digits = city_0_total < 0.001 || city_1_total < 0.001 || diff < 0.001 ? 4 : 2;
         data.push({
           groupName: f.city.name,
           x: d.name,
           y: (f.value / totals[f.city.name].numberOfFirms) * 100,
           fill: f.city.id === 945 ? d.color : rgba(d.color, 0.4),
+          tooltipContent: `
+            <div style='text-transform: uppercase; font-size: 0.85rem'>
+              <div style='font-size: 0.9rem; margin-bottom: 0.5rem;'>
+                <strong>${d.name}</strong>
+              </div>
+              <div>
+                <div style='display: flex; justify-content: space-between;'>
+                  <span style='margin-right: 1rem'>${d.numberOfFirms[0].city.name}:</span> <span>${parseFloat((city_0_total).toFixed(digits))}%</span>
+                </div>
+                <div style='display: flex; justify-content: space-between;'>
+                  <span style='margin-right: 1rem'>${d.numberOfFirms[1].city.name}:</span> <span>${parseFloat((city_1_total).toFixed(digits))}%</span>
+                </div>
+                <div style='display: flex; justify-content: space-between;'>
+                  <span style='margin-right: 1rem'>Difference:</span> <span>${parseFloat((diff).toFixed(digits))}%</span>
+                </div>
+              </div>
+            </div>
+          `,
+          tooltipContentOnly: true,
           onClick: d.level < 6 ? () => setFocusedIndustryId(d.naicsId) : undefined,
         })
       }
     });
   });
+  const sortedData = sortBy(data, ['groupName', 'y']).reverse();
 
   const breadCrumbList: MergedDatum[] = [];
   let current = focusedIndustryId === null ? undefined : merged.find(d => d.naicsId === focusedIndustryId);
@@ -144,45 +242,45 @@ const App = () => {
   const breadCrumbs = breadCrumbList.reverse().map((industry, i) => {
     if (i === breadCrumbList.length - 1) {
       return (
-        <li key={industry.naicsId}>
+        <BreadCrumb key={industry.naicsId}>
           {industry.name}
-        </li>
+        </BreadCrumb>
       );
     }
     return (
-      <li key={industry.naicsId}>
-        <button onClick={() => setFocusedIndustryId(industry.naicsId)}>
-          {industry.name}
-        </button>
-      </li>
+      <BreadCrumb key={industry.naicsId}>
+        <BreadCrumbLink onClick={() => setFocusedIndustryId(industry.naicsId)}>
+          <span>{industry.name}</span>
+        </BreadCrumbLink>
+      </BreadCrumb>
     );
   })
   const topLevelBreadCrumb = breadCrumbList.length ? (
-    <li>
-      <button onClick={() => setFocusedIndustryId(null)}>
-        Sector Level
-      </button>
-    </li>
+    <BreadCrumb>
+      <BreadCrumbLink onClick={() => setFocusedIndustryId(null)}>
+        <span>Sector Level</span>
+      </BreadCrumbLink>
+    </BreadCrumb>
   ) : (
-    <li>
+    <BreadCrumb>
         Sector Level
-    </li>
+    </BreadCrumb>
   )
 
-
   return (
-    <>
-      <ul>
+    <Root>
+      <BreadCrumbList>
         {topLevelBreadCrumb}
         {breadCrumbs}
-      </ul>
+      </BreadCrumbList>
       <DataViz
         id={'example-cluster-bar-chart'}
         vizType={VizType.ClusterBarChart}
-        data={data}
+        data={sortedData}
         axisLabels={{left: '% of Total Firms'}}
+        labelFont={"'OfficeCodeProWeb', monospace"}
       />
-    </>
+    </Root>
   );
 }
 
