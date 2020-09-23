@@ -2,10 +2,11 @@ import React, {useState, useEffect, useRef} from 'react';
 import styled from 'styled-components';
 import createBarChart, {
   Datum as BarChartDatum,
-  LabelPlacement,
 } from '../d3/barChart';
 import debounce from 'lodash/debounce';
+import isEqual from 'lodash/isEqual';
 import * as d3 from 'd3';
+import usePrevious from 'react-use-previous-hook';
 
 const SizingElm = styled.div`
   height: 450px;
@@ -19,35 +20,23 @@ const SizingElm = styled.div`
 
 interface Props {
   id: string;
-  data: BarChartDatum[][];
+  data: BarChartDatum[];
   axisLabels?: {left?: string, bottom?: string};
-    axisMinMax?: {
-    minY?: number,
-    maxY?: number,
-  };
-  hideAxis?: {
-    left?: boolean;
-    bottom?: boolean;
-  }
-  averageLines?: {
-    value: number,
-    label?: string;
-    labelPlacement?: LabelPlacement;
-    strokeWidth?: number;
-    strokeDasharray?: number;
-    strokeColor?: string;
-  }[]
+  axisMinMax?: {minY?: number, maxY?: number};
   labelFont?: string;
 }
 
 export const ZoomableBarChart = (props: Props) => {
   const {
-    id
+    id, data,
   } = props;
   const sizingNodeRef = useRef<HTMLDivElement | null>(null);
   const svgNodeRef = useRef<any>(null);
 
+  const previousData = usePrevious(data);
+
   const [windowWidth, setWindowWidth] = useState<number>(window.innerWidth);
+  const [updateDataFunc, setUpdateDataFunc] = useState<undefined | ((newData: BarChartDatum[]) => void)>(undefined);
 
   useEffect(() => {
     const updateWindowWidth = debounce(() => {
@@ -61,30 +50,33 @@ export const ZoomableBarChart = (props: Props) => {
 
 
   useEffect(() => {
-    console.log('effect runs')
     let svgNode: HTMLDivElement | null = null;
-    if (svgNodeRef && svgNodeRef.current && sizingNodeRef && sizingNodeRef.current) {
+    if (svgNodeRef && svgNodeRef.current && sizingNodeRef && sizingNodeRef.current && !updateDataFunc) {
       const sizingNode = sizingNodeRef.current;
       svgNode = svgNodeRef.current;
-      console.log({svgNode, sizingNode});
       const svg = d3.select(svgNode);
-      createBarChart({
+      const update = createBarChart({
         svg, data: props.data, labelFont: props.labelFont, size: {
           width: sizingNode.clientWidth, height: sizingNode.clientHeight,
         },
         axisLabels: props.axisLabels,
-        axisMinMax: props.axisMinMax,
-        hideAxis: props.hideAxis,
-        averageLines: props.averageLines,
       });
+      setUpdateDataFunc(() => update);
     }
-    return () => {
-      if (svgNode) {
-        console.log('clean up')
-        svgNode.innerHTML = '';
-      }
-    };
-  }, [svgNodeRef, sizingNodeRef, windowWidth, props]);
+  }, [svgNodeRef, sizingNodeRef, windowWidth, props, updateDataFunc]);
+
+  useEffect(() => () => {
+    if (svgNodeRef.current) {
+      svgNodeRef.current.innerHTML = '';
+    }
+  }, []);
+
+  useEffect(() => {
+    if (updateDataFunc && data && previousData && !isEqual(data, previousData)) {
+      updateDataFunc(data);
+    }
+  }, [data, updateDataFunc, previousData])
+
 
   return (
     <SizingElm ref={sizingNodeRef}>
